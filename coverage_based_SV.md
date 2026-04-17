@@ -26,16 +26,26 @@ RESULTS_DIR="results"
 mkdir -p $COV_DIR $NORM_DIR $RESULTS_DIR
 
 # =========================
-# STEP 1: COVERAGE (auto-detect BAMs)
+# STEP 0: CLEAN OLD TEMP FILES (optional but recommended)
+# =========================
+rm -f $BAM_DIR/*.proper.bam $BAM_DIR/*.proper.bam.bai || true
+
+# =========================
+# STEP 1: COVERAGE (streaming, no temp BAM)
 # =========================
 echo "Calculating coverage..."
 
 for BAM in $BAM_DIR/*.bam
 do
+    # Skip any weird/intermediate files just in case
+    [[ "$BAM" == *proper* ]] && continue
+
     SAMPLE=$(basename "$BAM" .bam)
     echo "Processing $SAMPLE"
 
-    # Coverage using properly paired reads (streaming, no temp BAM)
+    # sanity check: ensure BAM is readable
+    samtools quickcheck "$BAM" || { echo "❌ Corrupt BAM: $BAM"; continue; }
+
     samtools view -b -f 2 -F 4 "$BAM" | \
     bedtools coverage \
         -a "$WINDOWS" \
@@ -44,7 +54,6 @@ do
     > $COV_DIR/${SAMPLE}.cov
 
 done
-
 # =========================
 # STEP 2: NORMALIZE (RPM)
 # =========================
@@ -52,6 +61,8 @@ echo "Normalizing coverage..."
 
 for BAM in $BAM_DIR/*.bam
 do
+    [[ "$BAM" == *proper* ]] && continue
+
     SAMPLE=$(basename "$BAM" .bam)
 
     TOTAL_READS=$(samtools view -c -f 2 -F 4 "$BAM")
@@ -62,7 +73,6 @@ do
     }' $COV_DIR/${SAMPLE}.cov > $NORM_DIR/${SAMPLE}.rpm
 
 done
-
 
 # =========================
 # STEP 3: MEDIAN PER WINDOW
@@ -97,6 +107,8 @@ echo "Calling structural variants..."
 
 for BAM in $BAM_DIR/*.bam
 do
+    [[ "$BAM" == *proper* ]] && continue
+
     SAMPLE=$(basename "$BAM" .bam)
 
     paste $NORM_DIR/${SAMPLE}.rpm $RESULTS_DIR/median_windows.txt | \
@@ -129,5 +141,6 @@ do
 
 done
 
-echo "Pipeline complete!"
+echo "✅ Pipeline complete!"
+
 ````
