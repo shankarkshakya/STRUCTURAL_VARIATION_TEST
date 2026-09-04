@@ -139,7 +139,12 @@ done
 wait
 echo "All coverage jobs finished."
 ````
+## move all the tsv into 1 folder
+````
+mkdir -p BOC_RAWTSV
+find . -type f -name "*.breadth4x.tsv" -exec mv {} BOC_RAWTSV/ \;
 
+````
 
 
 ## filter merge BOC output
