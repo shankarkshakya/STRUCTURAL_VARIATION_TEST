@@ -1,4 +1,5 @@
-## 
+##  compute BOC for window to calculate SV
+````
 #!/bin/bash
 
 # ============================================================
@@ -118,3 +119,21 @@ echo "$OUT/${SAMPLE}.breadth4x.tsv"
 echo ""
 echo "First 10 windows:"
 head "$OUT/${SAMPLE}.breadth4x.tsv"
+````
+
+## loop throguh boc.sh scrupt
+````
+for bam in /mnt/etoposide-marigold/SORTED_BAMS/*.sorted.bam; do
+    sample=$(basename "$bam" .sorted.bam)
+    echo "Starting $sample"
+
+    ./boc.sh \
+        "$bam" \
+        /mnt/etoposide-marigold/REF/OG99_ragtag_min10K.fasta \
+        "$sample" \
+        > "${sample}.log" 2>&1 &
+done
+
+wait
+echo "All coverage jobs finished."
+````
