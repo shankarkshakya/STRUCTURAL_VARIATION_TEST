@@ -137,3 +137,77 @@ done
 wait
 echo "All coverage jobs finished."
 ````
+
+## Now filter the BOC table based on BOC cutoff
+
+````
+awk -F'\t' 'BEGIN{OFS="\t"}
+NR==1 || $7 < 0.05
+' MAR_Et3_01_S84.sorted.breadth4x.tsv | less -S
+````
+
+## filter BOC output
+./script.sh listoftsv merged-output.tsv
+````
+#!/bin/bash
+
+LIST="$1"
+OUTPUT="$2"
+
+echo -e "Sample\tContig\tStart\tEnd\tSize_bp\tWindows_merged" > "$OUTPUT"
+
+while read -r TSV; do
+
+    awk -F'\t' '
+    BEGIN { OFS="\t" }
+
+    NR==1 { next }
+
+    # Breadth_4x < 0.05
+    $7 >= 0.05 { next }
+
+    {
+        if (!active) {
+            sample=$1
+            contig=$2
+            region_start=$3
+            region_end=$4
+            n=1
+            active=1
+            next
+        }
+
+        # Adjacent qualifying window
+        if ($1 == sample &&
+            $2 == contig &&
+            $3 == region_end) {
+
+            region_end=$4
+            n++
+
+        } else {
+
+            print sample,contig,
+                  region_start,region_end,
+                  region_end-region_start,n
+
+            sample=$1
+            contig=$2
+            region_start=$3
+            region_end=$4
+            n=1
+        }
+    }
+
+    END {
+        if (active) {
+            print sample,contig,
+                  region_start,region_end,
+                  region_end-region_start,n
+        }
+    }
+    ' "$TSV" >> "$OUTPUT"
+
+done < "$LIST"
+
+````
