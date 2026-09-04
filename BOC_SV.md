@@ -1,3 +1,6 @@
+## run boc_loop.sh to get BOC values, make list of breadth4x.tsv file and run filter-merge-boc.sh script, this will  
+filter BOC values and return merged_tsv file. This file now can be processed in R.
+
 ##  compute BOC for window to calculate SV
 ````
 #!/bin/bash
@@ -138,15 +141,9 @@ wait
 echo "All coverage jobs finished."
 ````
 
-## Now filter the BOC table based on BOC cutoff
 
-````
-awk -F'\t' 'BEGIN{OFS="\t"}
-NR==1 || $7 < 0.05
-' MAR_Et3_01_S84.sorted.breadth4x.tsv | less -S
-````
 
-## filter BOC output
+## filter merge BOC output
 ./script.sh listoftsv merged-output.tsv
 ````
 #!/bin/bash
