@@ -1,5 +1,4 @@
-## run boc_loop.sh to get BOC values, make list of breadth4x.tsv file and run filter-merge-boc.sh script, this will  
-filter BOC values and return merged_tsv file. This file now can be processed in R.
+## run boc_loop.sh to get BOC values, make list of breadth4x.tsv file and run filter-merge-boc.sh script, this will  filter BOC values and return merged_tsv file. run unique.sh on the merged tsv This file now can be processed in R.
 
 ##  compute BOC for window to calculate SV
 ````
@@ -206,5 +205,97 @@ while read -r TSV; do
     ' "$TSV" >> "$OUTPUT"
 
 done < "$LIST"
+
+````
+
+## unique.sh
+````
+#!/bin/bash
+
+INPUT="$1"
+OUTPUT="$2"
+
+# Create proper BED file:
+# Contig  Start  End  Sample
+awk -F'\t' '
+NR > 1 {
+    print $2, $3, $4, $1
+}' OFS="\t" "$INPUT" > all_sv.bed
+
+
+# Find SVs overlapping an SV from another sample
+bedtools intersect \
+    -a all_sv.bed \
+    -b all_sv.bed \
+    -wa -wb |
+awk -F'\t' '
+BEGIN { OFS="\t" }
+
+{
+    contig1=$1
+    start1=$2
+    end1=$3
+    sample1=$4
+
+    contig2=$5
+    start2=$6
+    end2=$7
+    sample2=$8
+
+    # Same sample = not evidence of sharing
+    if (sample1 == sample2)
+        next
+
+    # Different contigs cannot overlap
+    if (contig1 != contig2)
+        next
+
+    overlap_start = (start1 > start2 ? start1 : start2)
+    overlap_end   = (end1 < end2 ? end1 : end2)
+
+    if (overlap_end > overlap_start) {
+
+        overlap = overlap_end - overlap_start
+        len1 = end1 - start1
+        len2 = end2 - start2
+
+        # 50% reciprocal overlap
+        if (overlap / len1 >= 0.50 &&
+            overlap / len2 >= 0.50) {
+
+            print sample1, contig1, start1, end1
+        }
+    }
+}
+' > shared_sv.tmp
+
+
+# Identify SVs that are NOT shared with another sample
+awk -F'\t' '
+BEGIN { OFS="\t" }
+
+FNR==NR {
+    shared[$1 FS $2 FS $3 FS $4] = 1
+    next
+}
+
+NR==1 {
+    print $0, "Unique"
+    next
+}
+
+{
+    key=$1 FS $2 FS $3 FS $4
+
+    if (key in shared)
+        print $0, "FALSE"
+    else
+        print $0, "TRUE"
+}
+' shared_sv.tmp "$INPUT" > "$OUTPUT"
+
+
+rm -f all_sv.bed shared_sv.tmp
+
 
 ````
